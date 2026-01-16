@@ -292,11 +292,6 @@ function insertSelectedPrompt() {
 
     const target = panelState.targetInput;
 
-    // Only remove trigger char if NOT hotkey mode
-    if (!panelState.isHotkeyTrigger) {
-        removeTriggerChar(target);
-    }
-
     // Hide panel first
     hidePanel();
 
@@ -304,55 +299,10 @@ function insertSelectedPrompt() {
     injectIntoActiveElement(prompt.content);
 }
 
-function removeTriggerChar(target) {
-    if (!target) return;
-    const triggerKey = TRIGGER_CONFIG.key;
-
-    target.focus();
-
-    if (target.getAttribute('contenteditable') === 'true') {
-        const selection = window.getSelection();
-        if (selection.rangeCount === 0) return;
-
-        const range = selection.getRangeAt(0);
-        const textNode = range.startContainer;
-
-        if (textNode.nodeType === 3) { // Text node
-            const text = textNode.textContent;
-            const cursorPos = range.startOffset;
-
-            // Find and remove the last trigger key
-            for (let i = cursorPos - 1; i >= 0; i--) {
-                if (text[i] === triggerKey) {
-                    const newText = text.substring(0, i) + text.substring(i + 1);
-                    textNode.textContent = newText;
-                    range.setStart(textNode, i);
-                    range.collapse(true);
-                    break;
-                }
-            }
-        }
-    } else {
-        const start = target.selectionStart;
-        const value = target.value;
-
-        // Find and remove the last trigger key
-        for (let i = start - 1; i >= 0; i--) {
-            if (value[i] === triggerKey) {
-                target.value = value.substring(0, i) + value.substring(i + 1);
-                target.selectionStart = target.selectionEnd = i;
-                break;
-            }
-        }
-    }
-}
-
-// ============================================================================
-// Event Listeners
-// ============================================================================
-
 function attachPanelListeners() {
     const panel = panelState.panelElement;
+    if (!panel) return;
+
     const searchInput = panel.querySelector('.pm-search');
     const listContainer = panel.querySelector('.pm-list');
 
@@ -383,14 +333,15 @@ document.addEventListener('keydown', (e) => {
             case 'ArrowDown':
                 e.preventDefault();
                 e.stopPropagation();
-                const nextIndex = (panelState.selectedIndex + 1) % panelState.filteredPrompts.length;
+                const nextIndex = (panelState.selectedIndex + 1) % (panelState.filteredPrompts.length || 1);
                 updateSelection(nextIndex);
                 return;
 
             case 'ArrowUp':
                 e.preventDefault();
                 e.stopPropagation();
-                const prevIndex = (panelState.selectedIndex - 1 + panelState.filteredPrompts.length) % panelState.filteredPrompts.length;
+                const length = panelState.filteredPrompts.length || 1;
+                const prevIndex = (panelState.selectedIndex - 1 + length) % length;
                 updateSelection(prevIndex);
                 return;
 
@@ -409,90 +360,28 @@ document.addEventListener('keydown', (e) => {
     }
 
     // 2. Handle Hotkey Trigger
-    // Check if current config is a Hotkey (has modifiers or special key)
-    const isHotkeyConfig = TRIGGER_CONFIG.ctrlKey || TRIGGER_CONFIG.altKey || TRIGGER_CONFIG.metaKey || (TRIGGER_CONFIG.key.length > 1);
+    const matchKey = e.key.toLowerCase() === TRIGGER_CONFIG.key.toLowerCase();
+    const matchMods = !!e.ctrlKey === !!TRIGGER_CONFIG.ctrlKey &&
+        !!e.altKey === !!TRIGGER_CONFIG.altKey &&
+        !!e.metaKey === !!TRIGGER_CONFIG.metaKey &&
+        !!e.shiftKey === !!TRIGGER_CONFIG.shiftKey;
 
-    if (isHotkeyConfig) {
-        // Check if event matches config
-        // Note: e.key for letters matches case (a vs A), but config.key was stored from e.key.
-        // Usually safe to compare directly or toLowerCase for letters.
-        const matchKey = e.key.toLowerCase() === TRIGGER_CONFIG.key.toLowerCase();
-        const matchMods = !!e.ctrlKey === !!TRIGGER_CONFIG.ctrlKey &&
-            !!e.altKey === !!TRIGGER_CONFIG.altKey &&
-            !!e.metaKey === !!TRIGGER_CONFIG.metaKey &&
-            !!e.shiftKey === !!TRIGGER_CONFIG.shiftKey;
+    const isCombination = e.ctrlKey || e.altKey || e.metaKey;
 
-        if (matchKey && matchMods && isInput(e.target)) {
-            e.preventDefault();
-            e.stopPropagation();
-            showPanel(e.target, true); // isHotkey = true
-        }
+    if (matchKey && matchMods && isCombination && isInput(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        showPanel(e.target, true);
     }
 }, true);
 
 // Close panel when clicking outside
 document.addEventListener('click', (e) => {
     if (!panelState.isOpen) return;
-
-    if (!panelState.panelElement.contains(e.target)) {
+    if (panelState.panelElement && !panelState.panelElement.contains(e.target)) {
         hidePanel();
     }
 }, true);
-
-// Trigger detection for TEXT triggers (input event)
-document.addEventListener('input', (e) => {
-    const target = e.target;
-
-    if (!isInput(target)) return;
-    if (panelState.isOpen) return;
-
-    // Only process if config is TEXT trigger (no modifiers, single char)
-    const isHotkeyConfig = TRIGGER_CONFIG.ctrlKey || TRIGGER_CONFIG.altKey || TRIGGER_CONFIG.metaKey || (TRIGGER_CONFIG.key.length > 1);
-
-    if (!isHotkeyConfig) {
-        if (shouldTriggerText(target)) {
-            showPanel(target, false); // isHotkey = false
-        }
-    }
-}, true);
-
-function shouldTriggerText(target) {
-    const triggerKey = TRIGGER_CONFIG.key;
-
-    if (target.getAttribute('contenteditable') === 'true') {
-        const selection = window.getSelection();
-        if (selection.rangeCount === 0) return false;
-
-        const range = selection.getRangeAt(0);
-        const textNode = range.startContainer;
-
-        if (textNode.nodeType !== 3) return false; // Not a text node
-
-        const text = textNode.textContent;
-        const cursorPos = range.startOffset;
-
-        // Check if cursor is right after trigger key
-        if (cursorPos > 0 && text[cursorPos - 1] === triggerKey) {
-            // Check if trigger is at start or preceded by whitespace
-            if (cursorPos === 1 || /\s/.test(text[cursorPos - 2])) {
-                return true;
-            }
-        }
-    } else {
-        const cursorPos = target.selectionStart;
-        const value = target.value;
-
-        // Check if cursor is right after trigger key
-        if (cursorPos > 0 && value[cursorPos - 1] === triggerKey) {
-            // Check if trigger is at start or preceded by whitespace
-            if (cursorPos === 1 || /\s/.test(value[cursorPos - 2])) {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
 
 // ============================================================================
 // Original Content Script Code

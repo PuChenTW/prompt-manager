@@ -20,9 +20,19 @@ let editingId = null;
 chrome.storage.local.get(['prompts', 'triggerConfig'], (result) => {
     prompts = result.prompts || [];
 
-    // Config default: just '/'
-    const config = result.triggerConfig || { key: '/', code: 'Slash', display: '/' };
-    triggerKeyInput.value = config.display || '/';
+    // Config default: Cmd+/ on Mac, Ctrl+/ on others
+    const defaultDisplay = 'Ctrl+/';
+    const defaultKey = '/';
+    const defaultCode = 'Slash';
+    const defaultMods = { ctrlKey: true, metaKey: false, altKey: false, shiftKey: false };
+
+    const config = result.triggerConfig || {
+        key: defaultKey,
+        code: defaultCode,
+        display: defaultDisplay,
+        ...defaultMods
+    };
+    triggerKeyInput.value = config.display;
     triggerKeyInput.dataset.config = JSON.stringify(config);
 
     renderPrompts();
@@ -45,6 +55,7 @@ settingsModal.querySelector('.modal-overlay').onclick = () => {
 triggerKeyInput.onclick = () => {
     triggerKeyInput.value = 'Press keys...';
     triggerKeyInput.classList.add('recording');
+    saveSettingsBtn.disabled = true;
 };
 
 triggerKeyInput.onkeydown = (e) => {
@@ -56,28 +67,38 @@ triggerKeyInput.onkeydown = (e) => {
         return;
     }
 
+    const hasModifier = e.ctrlKey || e.altKey || e.metaKey || e.shiftKey;
+
     const modifiers = [];
     if (e.ctrlKey) modifiers.push('Ctrl');
-    if (e.metaKey) modifiers.push('Cmd');
     if (e.altKey) modifiers.push('Alt');
     if (e.shiftKey) modifiers.push('Shift');
+    if (e.metaKey) modifiers.push('Cmd');
 
     const keyDisplay = modifiers.length > 0 ? modifiers.join('+') + '+' + e.key.toUpperCase() : e.key;
 
     const config = {
         key: e.key,
         code: e.code,
-        ctrlKey: e.ctrlKey,
-        metaKey: e.metaKey,
-        altKey: e.altKey,
-        shiftKey: e.shiftKey,
+        ctrlKey: !!e.ctrlKey,
+        metaKey: !!e.metaKey,
+        altKey: !!e.altKey,
+        shiftKey: !!e.shiftKey,
         display: keyDisplay
     };
 
     triggerKeyInput.value = keyDisplay;
     triggerKeyInput.dataset.config = JSON.stringify(config);
-    triggerKeyInput.classList.remove('recording');
-    triggerKeyInput.blur(); // Stop recording
+
+    if (!hasModifier) {
+        triggerKeyInput.classList.add('error');
+        saveSettingsBtn.disabled = true;
+    } else {
+        triggerKeyInput.classList.remove('error');
+        triggerKeyInput.classList.remove('recording');
+        saveSettingsBtn.disabled = false;
+        triggerKeyInput.blur(); // Stop recording
+    }
 };
 
 saveSettingsBtn.onclick = () => {
@@ -85,7 +106,19 @@ saveSettingsBtn.onclick = () => {
     try {
         config = JSON.parse(triggerKeyInput.dataset.config);
     } catch (e) {
-        config = { key: '/', code: 'Slash', display: '/' };
+        config = { key: '/', code: 'Slash', display: 'Ctrl+/', ctrlKey: true, metaKey: false, altKey: false, shiftKey: false };
+    }
+
+    // Validate: must have at least one primary modifier (Ctrl/Cmd/Alt)
+    // Actually user said "combine key", Shift+/ is a combine key for some,
+    // but usually means modifier + key.
+    const hasModifier = config.ctrlKey || config.altKey || config.metaKey || config.shiftKey;
+
+    if (!hasModifier) {
+        alert('Please use a combination key (e.g., Ctrl + /, Alt + P)');
+        triggerKeyInput.classList.add('error');
+        triggerKeyInput.focus();
+        return;
     }
 
     chrome.storage.local.set({ triggerConfig: config }, () => {

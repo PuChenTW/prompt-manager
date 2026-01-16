@@ -154,6 +154,14 @@ h2,
     transform: translateY(0);
 }
 
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+    filter: grayscale(0.2);
+}
+
 .btn-icon {
     background: none;
     border: none;
@@ -200,9 +208,19 @@ h2,
 }
 
 .form-control.recording {
-    border-color: var(--color-danger);
-    background-color: #fef2f2;
+    border-color: #667eea;
+    background-color: #f5f7ff;
     animation: pulse 1.5s infinite;
+}
+
+#trigger-key-input.error {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+#trigger-key-input.recording {
+    border-color: #667eea;
+    background-color: #f5f7ff;
 }
 
 @keyframes pulse {
@@ -219,10 +237,14 @@ h2,
     }
 }
 
-textarea.form-control {
-    height: 100%;
-    resize: none;
-    line-height: 1.6;
+.setting-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    background: #f8fafc;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border-left: 3px solid #667eea;
 }
 
 /* Modals */
