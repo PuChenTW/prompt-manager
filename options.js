@@ -1,3 +1,6 @@
+const MAX_CONTENT_LENGTH = 5000;
+const MAX_TITLE_LENGTH = 200;
+
 const promptList = document.getElementById('prompt-list');
 const addBtn = document.getElementById('add-btn');
 const settingsBtn = document.getElementById('settings-btn');
@@ -11,6 +14,13 @@ const titleInput = document.getElementById('title-input');
 const contentInput = document.getElementById('content-input');
 const triggerKeyInput = document.getElementById('trigger-key-input');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
+const charCount = document.getElementById('char-count');
+const charLimitDisplay = document.getElementById('char-limit-display');
+
+// Set limits dynamically
+titleInput.maxLength = MAX_TITLE_LENGTH;
+contentInput.maxLength = MAX_CONTENT_LENGTH;
+charLimitDisplay.textContent = MAX_CONTENT_LENGTH.toLocaleString();
 
 
 let prompts = [];
@@ -179,10 +189,34 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function updateCharCount() {
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+    const length = contentInput.value.length;
+
+    charCount.textContent = length.toLocaleString();
+
+    const isContentTooLong = length > MAX_CONTENT_LENGTH;
+    const isTitleTooLong = titleInput.value.length > MAX_TITLE_LENGTH;
+    const isEmpty = !title || !content;
+
+    if (isContentTooLong) {
+        charCount.parentElement.classList.add('limit-reached');
+    } else {
+        charCount.parentElement.classList.remove('limit-reached');
+    }
+
+    saveBtn.disabled = isContentTooLong || isTitleTooLong || isEmpty;
+}
+
+contentInput.oninput = updateCharCount;
+titleInput.oninput = updateCharCount;
+
 addBtn.onclick = () => {
     editingId = null;
     titleInput.value = '';
     contentInput.value = '';
+    updateCharCount();
     editorTitle.textContent = 'New Prompt';
     editor.classList.remove('hidden');
     titleInput.focus();
@@ -199,11 +233,6 @@ editor.querySelector('.modal-overlay').onclick = () => {
 saveBtn.onclick = () => {
     const title = titleInput.value.trim();
     const content = contentInput.value.trim();
-
-    if (!title || !content) {
-        alert('Please fill in both title and content');
-        return;
-    }
 
     if (editingId) {
         const index = prompts.findIndex(p => p.id === editingId);
@@ -222,6 +251,7 @@ function startEdit(prompt) {
     editingId = prompt.id;
     titleInput.value = prompt.title;
     contentInput.value = prompt.content;
+    updateCharCount();
     editorTitle.textContent = 'Edit Prompt';
     editor.classList.remove('hidden');
     titleInput.focus();
