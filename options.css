@@ -366,6 +366,19 @@ h2,
     margin-bottom: 40px;
 }
 
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.page-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+}
+
 .header-actions {
     display: flex;
     gap: 12px;
