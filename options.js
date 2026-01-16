@@ -6,15 +6,83 @@ const cancelBtn = document.getElementById('cancel-btn');
 const saveBtn = document.getElementById('save-btn');
 const titleInput = document.getElementById('title-input');
 const contentInput = document.getElementById('content-input');
+const triggerKeyInput = document.getElementById('trigger-key-input');
+const saveSettingsBtn = document.getElementById('save-settings-btn');
+
 
 let prompts = [];
 let editingId = null;
 
-// Load prompts
-chrome.storage.local.get(['prompts'], (result) => {
+// Load stored data
+chrome.storage.local.get(['prompts', 'triggerConfig'], (result) => {
     prompts = result.prompts || [];
+
+    // Config default: just '/'
+    const config = result.triggerConfig || { key: '/', code: 'Slash', display: '/' };
+    triggerKeyInput.value = config.display || '/';
+    triggerKeyInput.dataset.config = JSON.stringify(config);
+
     renderPrompts();
 });
+
+// Key recorder
+triggerKeyInput.onclick = () => {
+    triggerKeyInput.value = 'Press keys...';
+    triggerKeyInput.classList.add('recording');
+};
+
+triggerKeyInput.onkeydown = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Ignore standalone modifier keys
+    if (['Control', 'Shift', 'Alt', 'Meta', 'AltGraph'].includes(e.key)) {
+        return;
+    }
+
+    const modifiers = [];
+    if (e.ctrlKey) modifiers.push('Ctrl');
+    if (e.metaKey) modifiers.push('Cmd');
+    if (e.altKey) modifiers.push('Alt');
+    if (e.shiftKey) modifiers.push('Shift');
+
+    const keyDisplay = modifiers.length > 0 ? modifiers.join('+') + '+' + e.key.toUpperCase() : e.key;
+
+    const config = {
+        key: e.key,
+        code: e.code,
+        ctrlKey: e.ctrlKey,
+        metaKey: e.metaKey,
+        altKey: e.altKey,
+        shiftKey: e.shiftKey,
+        display: keyDisplay
+    };
+
+    triggerKeyInput.value = keyDisplay;
+    triggerKeyInput.dataset.config = JSON.stringify(config);
+    triggerKeyInput.classList.remove('recording');
+    triggerKeyInput.blur(); // Stop recording
+};
+
+saveSettingsBtn.onclick = () => {
+    let config;
+    try {
+        config = JSON.parse(triggerKeyInput.dataset.config);
+    } catch (e) {
+        config = { key: '/', code: 'Slash', display: '/' };
+    }
+
+    chrome.storage.local.set({ triggerConfig: config }, () => {
+        const originalText = saveSettingsBtn.textContent;
+        saveSettingsBtn.textContent = 'Saved!';
+        saveSettingsBtn.disabled = true;
+        setTimeout(() => {
+            saveSettingsBtn.textContent = originalText;
+            saveSettingsBtn.disabled = false;
+        }, 1500);
+    });
+};
+
 
 function renderPrompts() {
     promptList.innerHTML = '';
