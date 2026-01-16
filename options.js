@@ -1,8 +1,11 @@
 const promptList = document.getElementById('prompt-list');
 const addBtn = document.getElementById('add-btn');
+const settingsBtn = document.getElementById('settings-btn');
 const editor = document.getElementById('editor');
+const settingsModal = document.getElementById('settings-modal');
 const editorTitle = document.getElementById('editor-title');
 const cancelBtn = document.getElementById('cancel-btn');
+const closeSettingsBtn = document.getElementById('close-settings-btn');
 const saveBtn = document.getElementById('save-btn');
 const titleInput = document.getElementById('title-input');
 const contentInput = document.getElementById('content-input');
@@ -24,6 +27,19 @@ chrome.storage.local.get(['prompts', 'triggerConfig'], (result) => {
 
     renderPrompts();
 });
+
+// Settings Modal Logic
+settingsBtn.onclick = () => {
+    settingsModal.classList.remove('hidden');
+};
+
+closeSettingsBtn.onclick = () => {
+    settingsModal.classList.add('hidden');
+};
+
+settingsModal.querySelector('.modal-overlay').onclick = () => {
+    settingsModal.classList.add('hidden');
+};
 
 // Key recorder
 triggerKeyInput.onclick = () => {
@@ -79,7 +95,8 @@ saveSettingsBtn.onclick = () => {
         setTimeout(() => {
             saveSettingsBtn.textContent = originalText;
             saveSettingsBtn.disabled = false;
-        }, 1500);
+            settingsModal.classList.add('hidden'); // Close after save
+        }, 1000);
     });
 };
 

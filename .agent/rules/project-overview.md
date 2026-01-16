@@ -2,6 +2,10 @@
 trigger: always_on
 ---
 
+---
+trigger: always_on
+---
+
 # Prompt Manager - Chrome Extension
 
 一個輕量化的 Chrome 擴充功能，用於管理和快速插入 Prompt 模板。
@@ -25,6 +29,11 @@ trigger: always_on
   - 在任何可編輯區域（輸入框、Textarea、contenteditable 元素）按右鍵
   - 選單中顯示「Prompt Manager」及其子選單
   - 點擊特定 Prompt 即可插入到目標輸入框
+
+- **鍵盤快捷鍵（Command Palette）**：
+  - 支援自定義觸發鍵（預設為 `/`）或組合鍵（如 `Ctrl + /`）
+  - 輸入觸發鍵後顯示 Prompt 搜尋面板
+  - 支援模糊搜尋與鍵盤導航選取
 
 - **變數自動定位**：
   - 插入 Prompt 後，自動偵測第一個 `{{variable}}` 的位置
@@ -53,6 +62,11 @@ trigger: always_on
   - 紫藍漸層主色調
   - Inter 字體提升可讀性
   - 卡片式佈局搭配多層陰影系統
+
+- **設定區域**：
+  - **齒輪按鈕**：點擊右上角齒輪圖示開啟設定彈窗
+  - **Trigger Key**：在彈窗中自訂叫出面板的快捷鍵，支援單一字元（如 `/`）或組合鍵（如 `Cmd+K`）
+  - **錄製機制**：點擊輸入框後直接按鍵即可自動錄製新快捷鍵
 
 - **Prompt 清單**：
   - 點擊擴充功能圖示開啟設定頁面（在新分頁中）
@@ -108,10 +122,17 @@ trigger: always_on
 5. 點擊 Save 儲存
 
 #### 4.2 日常使用
+**方法 A：右鍵選單**
 1. 在任何網站的輸入框上按右鍵
 2. 選擇「Prompt Manager」→ 選擇想使用的 Prompt
 3. Prompt 自動插入，游標移至第一個變數位置
 4. 輸入變數內容，完成 Prompt 使用
+
+**方法 B：鍵盤快捷鍵**
+1. 在輸入框中輸入觸發鍵（預設 `/`）或按下組合鍵
+2. 出現搜尋面板，輸入關鍵字搜尋 Prompt
+3. 使用上下鍵選擇，按 Enter 插入
+4. Prompt 自動插入，游標自動定位至變數
 
 #### 4.3 管理 Prompt
 1. 點擊擴充功能圖示開啟設定頁面
