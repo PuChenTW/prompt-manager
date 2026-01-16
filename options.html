@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Prompt Manager - Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Prompt Manager</h1>
+      <button id="add-btn" class="primary-btn">+ Add Prompt</button>
+    </header>
+
+    <div id="prompt-list" class="list">
+      <!-- Prompts will be injected here -->
+    </div>
+
+    <div id="editor" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <h2 id="editor-title">New Prompt</h2>
+        <input type="text" id="title-input" placeholder="Title (e.g. Financial Analyst)">
+        <textarea id="content-input" placeholder="Prompt text... Use {{variable}} for variables."></textarea>
+        <div class="modal-actions">
+          <button id="cancel-btn">Cancel</button>
+          <button id="save-btn" class="primary-btn">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
