@@ -37,7 +37,7 @@ function renderPrompts() {
         <div class="prompt-preview">${escapeHtml(p.content)}</div>
       </div>
       <div class="prompt-actions">
-        <button class="icon-btn delete" data-id="${p.id}">Delete</button>
+        <button class="btn-icon delete" data-id="${p.id}">Delete</button>
       </div>
     `;
 
