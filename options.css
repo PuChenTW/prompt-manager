@@ -80,12 +80,14 @@ h2 {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
     opacity: 0;
     transition: opacity 0.3s;
+    pointer-events: none;
 }
 
 .primary-btn:hover {
+    color: white;
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
 }
@@ -259,6 +261,7 @@ h2 {
     padding: 32px;
     border-radius: 20px;
     width: 80%;
+    height: 80%;
     max-width: 1200px;
     display: flex;
     flex-direction: column;
@@ -275,7 +278,6 @@ textarea {
     font-size: 15px;
     outline: none;
     font-family: inherit;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     color: var(--color-text-primary);
 }
 
@@ -291,8 +293,8 @@ textarea:focus {
 }
 
 textarea {
-    min-height: 280px;
-    resize: vertical;
+    height: 100%;
+    resize: none;
     line-height: 1.6;
 }
 
@@ -315,7 +317,7 @@ button {
     color: var(--color-text-primary);
 }
 
-button:hover {
+button:not(.primary-btn):hover {
     background: var(--color-surface-hover);
     border-color: var(--color-text-muted);
     transform: translateY(-1px);
