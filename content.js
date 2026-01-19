@@ -63,7 +63,6 @@ function showPanel(target, isHotkey = false) {
         panelState.isHotkeyTrigger = isHotkey;
 
         createPanelDOM();
-        positionPanel(target);
         renderPromptList();
         attachPanelListeners();
     });
@@ -100,113 +99,7 @@ function createPanelDOM() {
     panelState.panelElement = panel;
 }
 
-function positionPanel(target) {
-    if (!panelState.panelElement) return;
 
-    const position = getCaretPosition(target);
-    if (!position) return;
-
-    const panel = panelState.panelElement;
-    const panelHeight = 300;
-    const panelWidth = 400;
-    const padding = 8;
-    const lineHeight = 24; // Approve approximate line height
-
-    let top = position.top + lineHeight;
-    let left = position.left;
-
-    // Check if panel would overflow viewport bottom
-    if (top + panelHeight > window.innerHeight + window.scrollY) {
-        top = position.top - panelHeight - padding;
-    }
-
-    // Check if panel would overflow viewport right
-    if (left + panelWidth > window.innerWidth + window.scrollX) {
-        left = window.innerWidth + window.scrollX - panelWidth - padding;
-    }
-
-    // Ensure panel doesn't go off left edge
-    if (left < window.scrollX) {
-        left = window.scrollX + padding;
-    }
-
-    panel.style.top = `${top}px`;
-    panel.style.left = `${left}px`;
-}
-
-function getCaretPosition(element) {
-    if (element.getAttribute('contenteditable') === 'true') {
-        const selection = window.getSelection();
-        if (selection.rangeCount === 0) return null;
-
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-
-        // Handle case where range rect is all zeros (e.g. empty line in some editors)
-        if (rect.width === 0 && rect.height === 0 && rect.x === 0 && rect.y === 0) {
-            let container = range.startContainer;
-            if (container.nodeType === 3) container = container.parentNode;
-            const containerRect = container.getBoundingClientRect();
-            return {
-                top: containerRect.bottom + window.scrollY,
-                left: containerRect.left + window.scrollX
-            };
-        }
-
-        return {
-            top: rect.bottom + window.scrollY,
-            left: rect.left + window.scrollX
-        };
-    } else {
-        return getCaretCoordinates(element, element.selectionEnd);
-    }
-}
-
-// Helper to calculate coordinates for textarea/input
-function getCaretCoordinates(element, position) {
-    const div = document.createElement('div');
-    const style = window.getComputedStyle(element);
-
-    document.body.appendChild(div);
-
-    div.style.position = 'absolute';
-    div.style.top = '-9999px';
-    div.style.left = '-9999px';
-    div.style.whiteSpace = 'pre-wrap';
-    div.style.wordWrap = 'break-word';
-    div.style.visibility = 'hidden';
-
-    // Copy relevant styles
-    const properties = [
-        'direction', 'boxSizing', 'width', 'height', 'overflowX', 'overflowY',
-        'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
-        'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
-        'fontStyle', 'fontVariant', 'fontWeight', 'fontStretch', 'fontSize',
-        'fontSizeAdjust', 'lineHeight', 'fontFamily', 'textAlign', 'textTransform',
-        'textIndent', 'textDecoration', 'letterSpacing', 'wordSpacing'
-    ];
-
-    properties.forEach(prop => {
-        div.style[prop] = style[prop];
-    });
-
-    // Mirror content
-    div.textContent = element.value.substring(0, position);
-
-    const span = document.createElement('span');
-    span.textContent = element.value.substring(position) || '.';
-    div.appendChild(span);
-
-    const { offsetLeft: spanLeft, offsetTop: spanTop } = span;
-    const rect = element.getBoundingClientRect();
-
-    document.body.removeChild(div);
-
-    return {
-        top: rect.top + spanTop + window.scrollY - element.scrollTop + parseInt(style.borderTopWidth || 0),
-        left: rect.left + spanLeft + window.scrollX - element.scrollLeft + parseInt(style.borderLeftWidth || 0)
-    };
-}
 
 function renderPromptList() {
     const listContainer = panelState.panelElement.querySelector('.pm-list');
@@ -295,8 +188,8 @@ function insertSelectedPrompt() {
     // Hide panel first
     hidePanel();
 
-    // Insert prompt content
-    injectIntoActiveElement(prompt.content);
+    // Insert prompt content into the stored target element
+    injectIntoActiveElement(prompt.content, target);
 }
 
 function attachPanelListeners() {
@@ -400,9 +293,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-function injectIntoActiveElement(content) {
-    // Try to find the target element (last right-clicked or currently focused)
-    let target = lastRightClickedElement || document.activeElement;
+function injectIntoActiveElement(content, targetElement = null) {
+    // Use provided target element or try to find one
+    let target = targetElement || lastRightClickedElement || document.activeElement;
 
     // If the click was on a sub-element of a contenteditable, find the parent
     if (target && !isInput(target)) {
