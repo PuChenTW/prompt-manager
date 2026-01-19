@@ -14,8 +14,10 @@ const titleInput = document.getElementById('title-input');
 const contentInput = document.getElementById('content-input');
 const triggerKeyInput = document.getElementById('trigger-key-input');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
-const charCount = document.getElementById('char-count');
 const charLimitDisplay = document.getElementById('char-limit-display');
+const charCount = document.getElementById('char-count');
+const backdrop = document.getElementById('backdrop');
+const highlights = document.getElementById('highlights');
 
 // Set limits dynamically
 titleInput.maxLength = MAX_TITLE_LENGTH;
@@ -189,6 +191,26 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function applyHighlights(text) {
+    // Escape HTML first
+    let escaped = escapeHtml(text);
+
+    // Replace {{variable}} with <mark>{{variable}}</mark>
+    // Using a regex to find {{...}}
+    return escaped.replace(/\{\{[^}]*\}\}/g, '<mark>$&</mark>');
+}
+
+function updateHighlights() {
+    const text = contentInput.value;
+    const highlightedText = applyHighlights(text);
+    // Add a trailing newline to fix scrolling issues with pre-wrap
+    highlights.innerHTML = highlightedText + '\n';
+}
+
+function syncScroll() {
+    backdrop.scrollTop = contentInput.scrollTop;
+}
+
 function updateCharCount() {
     const title = titleInput.value.trim();
     const content = contentInput.value.trim();
@@ -209,7 +231,11 @@ function updateCharCount() {
     saveBtn.disabled = isContentTooLong || isTitleTooLong || isEmpty;
 }
 
-contentInput.oninput = updateCharCount;
+contentInput.oninput = () => {
+    updateCharCount();
+    updateHighlights();
+};
+contentInput.onscroll = syncScroll;
 titleInput.oninput = updateCharCount;
 
 addBtn.onclick = () => {
@@ -217,6 +243,7 @@ addBtn.onclick = () => {
     titleInput.value = '';
     contentInput.value = '';
     updateCharCount();
+    updateHighlights();
     editorTitle.textContent = 'New Prompt';
     editor.classList.remove('hidden');
     titleInput.focus();
@@ -252,6 +279,7 @@ function startEdit(prompt) {
     titleInput.value = prompt.title;
     contentInput.value = prompt.content;
     updateCharCount();
+    updateHighlights();
     editorTitle.textContent = 'Edit Prompt';
     editor.classList.remove('hidden');
     titleInput.focus();

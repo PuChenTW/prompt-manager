@@ -58,6 +58,9 @@
         <h2 id="editor-title">New Prompt</h2>
         <input type="text" id="title-input" class="form-control" placeholder="Title (e.g. Financial Analyst)">
         <div class="textarea-wrapper">
+          <div class="backdrop" id="backdrop">
+            <div class="highlights" id="highlights"></div>
+          </div>
           <textarea id="content-input" class="form-control content" placeholder="Prompt text... Use {{variable}} for variables."></textarea>
           <div class="char-counter"><span id="char-count">0</span> / <span id="char-limit-display"></span></div>
         </div>
