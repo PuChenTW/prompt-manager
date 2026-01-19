@@ -2,6 +2,22 @@ const PARENT_ID = 'prompt-manager-root';
 
 chrome.runtime.onInstalled.addListener(() => {
     createMenus();
+
+    // Initialize default trigger configuration
+    chrome.storage.local.get(['triggerConfig'], (result) => {
+        if (!result.triggerConfig) {
+            const defaultConfig = {
+                key: '/',
+                code: 'Slash',
+                display: 'Ctrl+/',
+                ctrlKey: true,
+                metaKey: false,
+                altKey: false,
+                shiftKey: false
+            };
+            chrome.storage.local.set({ triggerConfig: defaultConfig });
+        }
+    });
 });
 
 // Open options page when extension icon is clicked

@@ -42,7 +42,10 @@ chrome.storage.local.get(['prompts', 'triggerConfig'], (result) => {
         key: defaultKey,
         code: defaultCode,
         display: defaultDisplay,
-        ...defaultMods
+        ctrlKey: true,
+        metaKey: false,
+        altKey: false,
+        shiftKey: false
     };
     triggerKeyInput.value = config.display;
     triggerKeyInput.dataset.config = JSON.stringify(config);

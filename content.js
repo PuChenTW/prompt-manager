@@ -15,7 +15,15 @@ const panelState = {
 };
 
 const CACHE_DURATION = 5000; // 5 seconds
-let TRIGGER_CONFIG = { key: '/', code: 'Slash', display: '/' };
+let TRIGGER_CONFIG = {
+    key: '/',
+    code: 'Slash',
+    display: 'Ctrl+/',
+    ctrlKey: true,
+    metaKey: false,
+    altKey: false,
+    shiftKey: false
+};
 const MAX_PREVIEW_LENGTH = 80;
 
 // Load trigger key settings
