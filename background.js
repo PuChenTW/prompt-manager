@@ -2,6 +2,7 @@ const PARENT_ID = 'prompt-manager-root';
 
 chrome.runtime.onInstalled.addListener(() => {
     createMenus();
+    chrome.runtime.openOptionsPage();
 
     // Initialize default trigger configuration
     chrome.storage.local.get(['triggerConfig'], (result) => {
