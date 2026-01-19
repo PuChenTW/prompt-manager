@@ -2,15 +2,10 @@
   "manifest_version": 3,
   "name": "Prompt Manager",
   "version": "1.0",
-  "description": "Manage and inject prompt templates with variables.",
+  "description": "Save and reuse AI prompt templates. Insert prompts instantly with auto-focused variables.",
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting",
     "contextMenus"
-  ],
-  "host_permissions": [
-    "<all_urls>"
   ],
   "background": {
     "service_worker": "background.js"
