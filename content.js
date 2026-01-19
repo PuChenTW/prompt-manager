@@ -421,20 +421,57 @@ function injectIntoActiveElement(content) {
 
     target.focus();
 
-    // Use execCommand to simulate user input - more reliable for React/Next.js state updates
-    const success = document.execCommand('insertText', false, content);
+    // Modern text insertion without deprecated execCommand
+    const isContentEditable = target.getAttribute('contenteditable') === 'true';
 
-    if (!success) {
-        console.warn('Prompt Manager: execCommand failed, falling back to direct value/innerText setting.');
-        if (target.getAttribute('contenteditable') === 'true') {
-            target.innerText = content;
-        } else {
-            target.value = content;
+    if (isContentEditable) {
+        // For contenteditable: use Selection API to insert at cursor
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+
+            const textNode = document.createTextNode(content);
+            range.insertNode(textNode);
+
+            // Move cursor to end of inserted text
+            range.setStartAfter(textNode);
+            range.setEndAfter(textNode);
+            selection.removeAllRanges();
+            selection.addRange(range);
+
+            // Trigger input event for framework reactivity
+            target.dispatchEvent(new InputEvent('input', {
+                bubbles: true,
+                cancelable: true,
+                inputType: 'insertText',
+                data: content
+            }));
         }
-        target.dispatchEvent(new Event('input', { bubbles: true }));
+    } else {
+        // For textarea/input: insert at cursor position
+        const start = target.selectionStart || 0;
+        const end = target.selectionEnd || 0;
+        const before = target.value.substring(0, start);
+        const after = target.value.substring(end);
+
+        target.value = before + content + after;
+
+        // Set cursor position after inserted text
+        const newPosition = start + content.length;
+        target.selectionStart = newPosition;
+        target.selectionEnd = newPosition;
+
+        // Trigger input event for framework reactivity
+        target.dispatchEvent(new InputEvent('input', {
+            bubbles: true,
+            cancelable: true,
+            inputType: 'insertText',
+            data: content
+        }));
     }
 
-    focusVariable(target, content, target.getAttribute('contenteditable') === 'true');
+    focusVariable(target, content, isContentEditable);
 }
 
 function isInput(el) {
