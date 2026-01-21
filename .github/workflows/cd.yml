@@ -1,0 +1,27 @@
+name: CD - Release & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Build & Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Extension Zip
+        run: |
+          zip -r prompt-manager.zip manifest.json background.js content.js panel.css options.html options.css options.js icons/
+
+      - name: Create GitHub Release
+        uses: ssoftprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          files: prompt-manager.zip
