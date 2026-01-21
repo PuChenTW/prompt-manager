@@ -529,3 +529,50 @@ h2,
     display: flex;
     gap: 8px;
 }
+
+/* Drag & Drop Styles */
+.prompt-item {
+    cursor: default;
+    /* Change from pointer on parent */
+}
+
+.prompt-item.dragging {
+    opacity: 0.5;
+    background: var(--color-surface-hover);
+    border: 2px dashed #667eea;
+}
+
+.prompt-item.drag-over-top {
+    border-top: 2px solid #667eea;
+}
+
+.prompt-item.drag-over-bottom {
+    border-bottom: 2px solid #667eea;
+}
+
+.drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    margin-right: 12px;
+    cursor: grab;
+    color: var(--color-text-muted);
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.drag-handle:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text-primary);
+}
+
+.drag-handle svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Update prompt content cursor */
+.prompt-content {
+    cursor: pointer;
+}

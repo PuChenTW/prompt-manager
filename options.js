@@ -149,6 +149,8 @@ saveSettingsBtn.onclick = () => {
 };
 
 
+let draggedItemIndex = null;
+
 function renderPrompts() {
     promptList.innerHTML = '';
     if (prompts.length === 0) {
@@ -161,16 +163,25 @@ function renderPrompts() {
         return;
     }
 
-    prompts.forEach((p) => {
+    prompts.forEach((p, index) => {
         const item = document.createElement('div');
         item.className = 'prompt-item';
+        // Add draggable attributes
+        item.draggable = true;
+        item.dataset.index = index;
+
         item.innerHTML = `
-      <div class="prompt-content">
+      <div class="drag-handle" title="Drag to reorder">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 19c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+      </div>
+      <div class="prompt-content" title="Click to edit">
         <div class="prompt-title">${escapeHtml(p.title)}</div>
         <div class="prompt-preview">${escapeHtml(p.content)}</div>
       </div>
       <div class="prompt-actions">
-        <button class="btn-icon delete" data-id="${p.id}">Delete</button>
+        <button class="btn-icon delete" data-id="${p.id}" title="Delete">
+          <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+        </button>
       </div>
     `;
 
@@ -184,8 +195,84 @@ function renderPrompts() {
             deletePrompt(p.id);
         };
 
+        // Drag events
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragenter', handleDragEnter);
+        item.addEventListener('dragleave', handleDragLeave);
+        item.addEventListener('dragover', handleDragOver);
+        item.addEventListener('drop', handleDrop);
+        item.addEventListener('dragend', handleDragEnd);
+
         promptList.appendChild(item);
     });
+}
+
+function handleDragStart(e) {
+    draggedItemIndex = Number(this.dataset.index);
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    const rect = this.getBoundingClientRect();
+    const offset = e.clientY - rect.top;
+
+    if (offset < rect.height / 2) {
+        this.classList.remove('drag-over-bottom');
+        this.classList.add('drag-over-top');
+    } else {
+        this.classList.remove('drag-over-top');
+        this.classList.add('drag-over-bottom');
+    }
+}
+
+function handleDragEnter(e) {
+    // Clear highlights from other items to ensure clean state
+    document.querySelectorAll('.prompt-item').forEach(el => {
+        if (el !== this) el.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+}
+
+function handleDragLeave(e) {
+    // Only remove if leaving the element entirely (not entering a child)
+    if (this.contains(e.relatedTarget)) return;
+    this.classList.remove('drag-over-top', 'drag-over-bottom');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const isAfter = this.classList.contains('drag-over-bottom');
+    this.classList.remove('drag-over-top', 'drag-over-bottom');
+
+    const targetIndex = Number(this.dataset.index);
+    let finalIndex = isAfter ? targetIndex + 1 : targetIndex;
+
+    if (draggedItemIndex === null) return;
+
+    if (draggedItemIndex < finalIndex) {
+        finalIndex--;
+    }
+
+    if (draggedItemIndex !== finalIndex) {
+        const item = prompts[draggedItemIndex];
+        prompts.splice(draggedItemIndex, 1);
+        prompts.splice(finalIndex, 0, item);
+
+        chrome.storage.local.set({ prompts }, renderPrompts);
+    }
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.prompt-item').forEach(el => {
+        el.classList.remove('drag-over-top', 'drag-over-bottom');
+    });
+    draggedItemIndex = null;
 }
 
 function escapeHtml(text) {
