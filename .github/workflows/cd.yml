@@ -21,7 +21,7 @@ jobs:
           zip -r prompt-manager.zip manifest.json background.js content.js panel.css options.html options.css options.js icons/
 
       - name: Create GitHub Release
-        uses: ssoftprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.5.0
         if: github.ref_type == 'tag'
         with:
           files: prompt-manager.zip
