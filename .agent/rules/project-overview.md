@@ -36,17 +36,14 @@ trigger: always_on
   - 將游標移動至該變數並自動選取，方便使用者直接輸入替換
 
 #### 1.3 資料儲存
-- 使用 `chrome.storage.local` 儲存 Prompt 資料（容量約 5MB+）
-- 資料格式：
+- 使用 **IndexedDB** 儲存 Prompt 資料，突破了原先 `chrome.storage.local` 預設 5MB 的容量限制，可大量儲存長篇 Prompt 模板。
+- 快捷鍵設定 (Trigger Key) 因資料佔用極小，仍保留於 `chrome.storage.local` 中。
+- Prompt 資料格式 (IndexedDB `prompts` Object Store)：
   ```json
   {
-    "prompts": [
-      {
-        "id": "timestamp_string",
-        "title": "Prompt 標題",
-        "content": "Prompt 內容，支援 {{variable}} 變數"
-      }
-    ]
+    "id": "timestamp_string",
+    "title": "Prompt 標題",
+    "content": "Prompt 內容，支援 {{variable}} 變數"
   }
   ```
 
@@ -101,14 +98,17 @@ trigger: always_on
   - `contenteditable` 元素（如 ChatGPT、Claude 等）
 
 #### 3.2 注入機制
-- 使用 `document.execCommand('insertText')` 模擬真實使用者輸入
+- 使用現代的 `Selection API` 搭配 `insertNode` 等方法，取代已棄用的 `document.execCommand('insertText')`，提升穩定性。
 - 觸發 `input` 事件以確保 React/Next.js 等框架正確更新狀態
 - 追蹤右鍵點擊位置，即使焦點切換也能正確插入
 
 #### 3.3 效能與安全
 - 輕量化設計，最小化資源佔用
-- 僅在需要時載入 Content Script
 - 使用 Manifest V3 標準
+
+#### 3.4 架構通訊 (Messaging)
+- Content Script 受到 Origin 隔離限制無法直接存取擴充功能的 IndexedDB，故透過 `chrome.runtime.sendMessage` 向 Background Script 非同步請求 Prompt 清單。
+- 實作 5 秒的資料快取 (Cache) 機制，確保按下快捷鍵時面板能「零延遲」開啟，不被通訊延遲影響。
 
 ### 4. 使用流程
 
@@ -165,7 +165,7 @@ Code:
 
 1. **變數定位限制**：目前僅自動定位到第一個變數，後續變數需手動導航
 2. **iframe 支援**：部分複雜的 iframe 結構可能需要額外處理
-3. **儲存限制**：使用 `chrome.storage.local` 有容量限制（約 5MB+）
+3. **資料轉移**：若未來改變儲存結構，需要注意 IndexedDB 的資料庫版本升級與舊資料相容處理。
 
 ### 7. 未來可能擴充功能
 

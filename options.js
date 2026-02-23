@@ -29,29 +29,38 @@ let prompts = [];
 let editingId = null;
 
 // Load stored data
-chrome.storage.local.get(['prompts', 'triggerConfig'], (result) => {
-    prompts = result.prompts || [];
+async function init() {
+    // 1. Get trigger config from local storage
+    chrome.storage.local.get(['triggerConfig'], async (result) => {
+        // Config default: Cmd+/ on Mac, Ctrl+/ on others
+        const defaultDisplay = 'Ctrl+/';
+        const defaultKey = '/';
+        const defaultCode = 'Slash';
+        const defaultMods = { ctrlKey: true, metaKey: false, altKey: false, shiftKey: false };
 
-    // Config default: Cmd+/ on Mac, Ctrl+/ on others
-    const defaultDisplay = 'Ctrl+/';
-    const defaultKey = '/';
-    const defaultCode = 'Slash';
-    const defaultMods = { ctrlKey: true, metaKey: false, altKey: false, shiftKey: false };
+        const config = result.triggerConfig || {
+            key: defaultKey,
+            code: defaultCode,
+            display: defaultDisplay,
+            ctrlKey: true,
+            metaKey: false,
+            altKey: false,
+            shiftKey: false
+        };
+        triggerKeyInput.value = config.display;
+        triggerKeyInput.dataset.config = JSON.stringify(config);
+    });
 
-    const config = result.triggerConfig || {
-        key: defaultKey,
-        code: defaultCode,
-        display: defaultDisplay,
-        ctrlKey: true,
-        metaKey: false,
-        altKey: false,
-        shiftKey: false
-    };
-    triggerKeyInput.value = config.display;
-    triggerKeyInput.dataset.config = JSON.stringify(config);
+    // 2. Get prompts from IndexedDB
+    try {
+        prompts = await db.getAllPrompts();
+        renderPrompts();
+    } catch (e) {
+        console.error("Failed to load prompts from DB", e);
+    }
+}
 
-    renderPrompts();
-});
+init();
 
 // Settings Modal Logic
 settingsBtn.onclick = () => {
@@ -263,7 +272,12 @@ function handleDrop(e) {
         prompts.splice(draggedItemIndex, 1);
         prompts.splice(finalIndex, 0, item);
 
-        chrome.storage.local.set({ prompts }, renderPrompts);
+        db.savePrompts(prompts)
+            .then(() => {
+                renderPrompts();
+                chrome.runtime.sendMessage({ action: 'updateMenus' });
+            })
+            .catch(e => console.error("Failed to save reordered prompts", e));
     }
 }
 
@@ -358,10 +372,13 @@ saveBtn.onclick = () => {
         prompts.push({ id: Date.now().toString(), title, content });
     }
 
-    chrome.storage.local.set({ prompts }, () => {
-        renderPrompts();
-        editor.classList.add('hidden');
-    });
+    db.savePrompts(prompts)
+        .then(() => {
+            renderPrompts();
+            editor.classList.add('hidden');
+            chrome.runtime.sendMessage({ action: 'updateMenus' });
+        })
+        .catch(e => console.error("Failed to save prompt", e));
 };
 
 function startEdit(prompt) {
@@ -381,5 +398,10 @@ function deletePrompt(id) {
     }
 
     prompts = prompts.filter(p => p.id !== id);
-    chrome.storage.local.set({ prompts }, renderPrompts);
+    db.savePrompts(prompts)
+        .then(() => {
+            renderPrompts();
+            chrome.runtime.sendMessage({ action: 'updateMenus' });
+        })
+        .catch(e => console.error("Failed to delete prompt", e));
 }

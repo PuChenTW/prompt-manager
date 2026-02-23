@@ -51,8 +51,8 @@ function loadPrompts(callback) {
         return;
     }
 
-    chrome.storage.local.get(['prompts'], (result) => {
-        const prompts = result.prompts || [];
+    chrome.runtime.sendMessage({ action: 'getPrompts' }, (response) => {
+        const prompts = response?.prompts || [];
         panelState.cachedPrompts = prompts;
         panelState.cacheTimestamp = now;
         callback(prompts);

@@ -18,7 +18,7 @@ jobs:
 
       - name: Create Extension Zip
         run: |
-          zip -r prompt-manager.zip manifest.json background.js content.js panel.css options.html options.css options.js icons/
+          zip -r prompt-manager.zip manifest.json background.js db.js content.js panel.css options.html options.css options.js icons/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2.5.0
