@@ -88,38 +88,53 @@ trigger: always_on
 - 父選單：「Prompt Manager」
 - 子選單：動態顯示所有已儲存的 Prompt 標題
 
-### 3. 技術特性
+### 3. 自動化測試
 
-#### 3.1 相容性
+使用 Playwright E2E 測試，涵蓋三個執行環境的整合流程。
+
+```bash
+npm test                    # 執行所有測試
+npx playwright show-report  # 查看 HTML 報告
+```
+
+**首次設定：** `npm install && npx playwright install chromium`
+
+測試檔案位於 `tests/`：
+- `tests/options.test.js` — Options 頁面 CRUD 流程
+- `tests/content.test.js` — 熱鍵面板、注入、變數選取、Context Menu 路徑
+
+### 4. 技術特性
+
+#### 4.1 相容性
 - **網站支援**：所有網站（`<all_urls>`）
 - **輸入框支援**：
   - `<textarea>` 元素
   - `<input>` 元素
   - `contenteditable` 元素（如 ChatGPT、Claude 等）
 
-#### 3.2 注入機制
+#### 4.2 注入機制
 - 使用現代的 `Selection API` 搭配 `insertNode` 等方法，取代已棄用的 `document.execCommand('insertText')`，提升穩定性。
 - 觸發 `input` 事件以確保 React/Next.js 等框架正確更新狀態
 - 追蹤右鍵點擊位置，即使焦點切換也能正確插入
 
-#### 3.3 效能與安全
+#### 4.3 效能與安全
 - 輕量化設計，最小化資源佔用
 - 使用 Manifest V3 標準
 
-#### 3.4 架構通訊 (Messaging)
+#### 4.4 架構通訊 (Messaging)
 - Content Script 受到 Origin 隔離限制無法直接存取擴充功能的 IndexedDB，故透過 `chrome.runtime.sendMessage` 向 Background Script 非同步請求 Prompt 清單。
 - 實作 5 秒的資料快取 (Cache) 機制，確保按下快捷鍵時面板能「零延遲」開啟，不被通訊延遲影響。
 
-### 4. 使用流程
+### 5. 使用流程
 
-#### 4.1 初次設定
+#### 5.1 初次設定
 1. 安裝擴充功能
 2. 點擊擴充功能圖示開啟設定頁面
 3. 點擊「Add Prompt」建立第一個 Prompt 模板
 4. 輸入標題與內容（可使用 `{{variable}}` 標記變數）
 5. 點擊 Save 儲存
 
-#### 4.2 日常使用
+#### 5.2 日常使用
 **方法 A：右鍵選單**
 1. 在任何網站的輸入框上按右鍵
 2. 選擇「Prompt Manager」→ 選擇想使用的 Prompt
@@ -132,12 +147,12 @@ trigger: always_on
 3. 使用上下鍵選擇，按 Enter 插入
 4. Prompt 自動插入，游標自動定位至變數
 
-#### 4.3 管理 Prompt
+#### 5.3 管理 Prompt
 1. 點擊擴充功能圖示開啟設定頁面
 2. 在清單中找到要編輯或刪除的 Prompt
 3. 點擊 Edit 修改，或點擊 Delete 刪除
 
-### 5. 使用情境範例
+### 6. 使用情境範例
 
 #### 範例 1：財經分析師 Prompt
 ```
@@ -161,13 +176,13 @@ Code:
 
 使用時：右鍵選單 → Code Reviewer → 游標自動選取第一個 `{{language}}` → 輸入語言名稱 → Tab/手動導航至 `{{code}}` → 貼上程式碼
 
-### 6. 限制與注意事項
+### 7. 限制與注意事項
 
 1. **變數定位限制**：目前僅自動定位到第一個變數，後續變數需手動導航
 2. **iframe 支援**：部分複雜的 iframe 結構可能需要額外處理
 3. **資料轉移**：若未來改變儲存結構，需要注意 IndexedDB 的資料庫版本升級與舊資料相容處理。
 
-### 7. 未來可能擴充功能
+### 8. 未來可能擴充功能
 
 - 支援 Prompt 分類/標籤
 - 支援匯入/匯出 Prompt 集合

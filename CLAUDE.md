@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-A Chrome extension (Manifest V3) for managing and inserting AI prompt templates. Pure vanilla JavaScript — no build tools, no bundlers, no package manager, no test framework. Files are loaded directly by Chrome.
+A Chrome extension (Manifest V3) for managing and inserting AI prompt templates. Pure vanilla JavaScript — no build tools, no bundlers, no TypeScript. Files are loaded directly by Chrome.
 
 ## Loading the Extension for Testing
 
@@ -59,8 +59,24 @@ The extension has three execution contexts that cannot share memory directly:
 
 **Migration**: On `onInstalled`, `background.js` checks `chrome.storage.local` for a legacy `prompts` key and migrates it to IndexedDB, then removes it.
 
+## Testing
+
+Playwright E2E tests in `tests/`. Run with:
+
+```bash
+npm test                    # run all tests
+npx playwright show-report  # view HTML report after a run
+```
+
+**Setup (first time):** `npm install && npx playwright install chromium`
+
+### Playwright extension testing gotchas
+- `context` is a reserved built-in fixture (test-scoped) — use `browserContext` for the worker-scoped persistent context
+- `chrome.tabs.query({})` returns tabs without `url` (needs `tabs` permission not in manifest) — use `{ active: true, lastFocusedWindow: true }` + `page.bringToFront()` instead
+- Content scripts in `file://` pages don't have `chrome.tabs` — get tab IDs from the service worker only
+
 ## Constraints
 
-- No frameworks, no npm, no TypeScript — plain ES2020+ JavaScript
+- No frameworks, no TypeScript — plain ES2020+ JavaScript. `package.json` exists for devDependencies (Playwright) only; no runtime dependencies.
 - Manifest V3: no `document.execCommand`, service worker instead of background page
 - `db.js` uses a CommonJS-style export guard (`if (typeof module !== 'undefined')`) so it works both as an `importScripts()` target in the service worker and as a `<script>` tag in the options page
