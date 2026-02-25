@@ -1,0 +1,66 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What This Is
+
+A Chrome extension (Manifest V3) for managing and inserting AI prompt templates. Pure vanilla JavaScript — no build tools, no bundlers, no package manager, no test framework. Files are loaded directly by Chrome.
+
+## Loading the Extension for Testing
+
+There is no build step. To test changes:
+
+1. Open `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked" and select this directory
+4. After code changes, click the reload button on the extension card
+
+Reload is required after every change to `background.js`, `db.js`, `manifest.json`, or `options.js`/`options.html`. Changes to `content.js` and `panel.css` require reloading the target page.
+
+## Releasing
+
+Releases are triggered by pushing a git tag matching `v*`. The CI workflow (`.github/workflows/cd.yml`) zips the extension files and creates a GitHub Release. To release:
+
+```bash
+git tag v1.x.x
+git push origin v1.x.x
+```
+
+## Architecture
+
+The extension has three execution contexts that cannot share memory directly:
+
+| Context | Files | Runs in |
+|---|---|---|
+| Service Worker | `background.js`, `db.js` | Extension background |
+| Content Script | `content.js`, `panel.css` | Every web page |
+| Options Page | `options.js`, `options.html`, `options.css`, `db.js` | Extension tab |
+
+**Critical constraint:** Content scripts cannot access the extension's IndexedDB directly due to origin isolation. They must request data via `chrome.runtime.sendMessage({ action: 'getPrompts' })` which the background service worker handles. `content.js` caches the response for 5 seconds to avoid latency on hotkey press.
+
+**Data storage split:**
+- Prompts → IndexedDB (`PromptManagerDB`, `prompts` store) — bypasses the 5MB `chrome.storage.local` limit
+- Hotkey config (`triggerConfig`) → `chrome.storage.local` — small, needs synchronous-style access
+
+**Prompt schema:**
+```json
+{ "id": "timestamp_string", "title": "...", "content": "... {{variable}} ..." }
+```
+
+## Key Implementation Details
+
+**Text injection** (`content.js:injectIntoActiveElement`): Two paths based on target type:
+- `textarea`/`input`: direct `.value` manipulation with `selectionStart`/`selectionEnd`
+- `contenteditable`: Selection API + `insertNode()`, then fires `InputEvent` for React/Vue compatibility
+
+**Variable auto-selection** (`content.js:focusVariable`): After injection, searches backwards through the DOM text nodes for the first `{{...}}` match using a reversed-string scan (`findTextBackwards`), then walks forward (`walkForward`) to calculate the end position for selection range.
+
+**Context menu**: Built dynamically by `background.js:createMenus()`. Must be rebuilt whenever prompts change — options page sends `{ action: 'updateMenus' }` after any CRUD operation.
+
+**Migration**: On `onInstalled`, `background.js` checks `chrome.storage.local` for a legacy `prompts` key and migrates it to IndexedDB, then removes it.
+
+## Constraints
+
+- No frameworks, no npm, no TypeScript — plain ES2020+ JavaScript
+- Manifest V3: no `document.execCommand`, service worker instead of background page
+- `db.js` uses a CommonJS-style export guard (`if (typeof module !== 'undefined')`) so it works both as an `importScripts()` target in the service worker and as a `<script>` tag in the options page
