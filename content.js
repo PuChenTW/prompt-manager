@@ -11,26 +11,28 @@ const panelState = {
     selectedIndex: 0,
     triggerPosition: null,
     cachedPrompts: null,
-    cacheTimestamp: 0
+    cacheTimestamp: 0,
+    listenerController: null  // AbortController to clean up panel listeners on close
 };
 
-const CACHE_DURATION = 5000; // 5 seconds
-let TRIGGER_CONFIG = {
-    key: '/',
-    code: 'Slash',
-    display: 'Ctrl+/',
-    ctrlKey: true,
-    metaKey: false,
-    altKey: false,
-    shiftKey: false
-};
+// 5s balances freshness vs. latency on repeated hotkey presses within a session
+const CACHE_DURATION = 5000;
+// null until chrome.storage.local.get callback fires; keydown handler guards against this
+let TRIGGER_CONFIG = null;
+// 80 chars fits two lines in the panel item without overflow
 const MAX_PREVIEW_LENGTH = 80;
 
-// Load trigger key settings
+// Load trigger key settings; TRIGGER_CONFIG stays null until this resolves
 chrome.storage.local.get(['triggerConfig'], (result) => {
-    if (result.triggerConfig) {
-        TRIGGER_CONFIG = result.triggerConfig;
-    }
+    TRIGGER_CONFIG = result.triggerConfig || {
+        key: '/',
+        code: 'Slash',
+        display: 'Ctrl+/',
+        ctrlKey: true,
+        metaKey: false,
+        altKey: false,
+        shiftKey: false
+    };
 });
 
 // Listen for settings changes
@@ -78,6 +80,10 @@ function showPanel(target, isHotkey = false) {
 
 function hidePanel() {
     if (!panelState.isOpen) return;
+
+    // Abort all panel-scoped listeners before removing the DOM node
+    panelState.listenerController?.abort();
+    panelState.listenerController = null;
 
     if (panelState.panelElement) {
         panelState.panelElement.remove();
@@ -204,15 +210,17 @@ function attachPanelListeners() {
     const panel = panelState.panelElement;
     if (!panel) return;
 
+    const controller = new AbortController();
+    panelState.listenerController = controller;
+    const { signal } = controller;
+
     const searchInput = panel.querySelector('.pm-search');
     const listContainer = panel.querySelector('.pm-list');
 
-    // Search input
     searchInput.addEventListener('input', (e) => {
         filterPrompts(e.target.value);
-    });
+    }, { signal });
 
-    // Click on items
     listContainer.addEventListener('click', (e) => {
         const item = e.target.closest('.pm-item');
         if (item) {
@@ -220,9 +228,8 @@ function attachPanelListeners() {
             panelState.selectedIndex = index;
             insertSelectedPrompt();
         }
-    });
+    }, { signal });
 
-    // Focus search input
     searchInput.focus();
 }
 
@@ -260,7 +267,9 @@ document.addEventListener('keydown', (e) => {
         }
     }
 
-    // 2. Handle Hotkey Trigger
+    // 2. Handle Hotkey Trigger (skip if config not yet loaded from storage)
+    if (!TRIGGER_CONFIG) return;
+
     const matchKey = e.key.toLowerCase() === TRIGGER_CONFIG.key.toLowerCase();
     const matchMods = !!e.ctrlKey === !!TRIGGER_CONFIG.ctrlKey &&
         !!e.altKey === !!TRIGGER_CONFIG.altKey &&
@@ -301,19 +310,60 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-function injectIntoActiveElement(content, targetElement = null) {
-    // Use provided target element or try to find one
+function resolveTarget(targetElement) {
     let target = targetElement || lastRightClickedElement || document.activeElement;
 
-    // If the click was on a sub-element of a contenteditable, find the parent
     if (target && !isInput(target)) {
         const editableParent = target.closest('[contenteditable="true"]');
-        if (editableParent) {
-            target = editableParent;
-        } else {
-            target = findAIInputField();
-        }
+        target = editableParent || findAIInputField();
     }
+
+    return target || null;
+}
+
+function insertIntoContentEditable(target, content) {
+    const selection = window.getSelection();
+    if (selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+
+    const textNode = document.createTextNode(content);
+    range.insertNode(textNode);
+
+    range.setStartAfter(textNode);
+    range.setEndAfter(textNode);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    target.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText',
+        data: content
+    }));
+}
+
+function insertIntoInputField(target, content) {
+    const start = target.selectionStart || 0;
+    const end = target.selectionEnd || 0;
+
+    target.value = target.value.substring(0, start) + content + target.value.substring(end);
+
+    const newPosition = start + content.length;
+    target.selectionStart = newPosition;
+    target.selectionEnd = newPosition;
+
+    target.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText',
+        data: content
+    }));
+}
+
+function injectIntoActiveElement(content, targetElement = null) {
+    const target = resolveTarget(targetElement);
 
     if (!target) {
         console.error('Prompt Manager: No active input field found.');
@@ -322,54 +372,12 @@ function injectIntoActiveElement(content, targetElement = null) {
 
     target.focus();
 
-    // Modern text insertion without deprecated execCommand
     const isContentEditable = target.getAttribute('contenteditable') === 'true';
 
     if (isContentEditable) {
-        // For contenteditable: use Selection API to insert at cursor
-        const selection = window.getSelection();
-        if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-
-            const textNode = document.createTextNode(content);
-            range.insertNode(textNode);
-
-            // Move cursor to end of inserted text
-            range.setStartAfter(textNode);
-            range.setEndAfter(textNode);
-            selection.removeAllRanges();
-            selection.addRange(range);
-
-            // Trigger input event for framework reactivity
-            target.dispatchEvent(new InputEvent('input', {
-                bubbles: true,
-                cancelable: true,
-                inputType: 'insertText',
-                data: content
-            }));
-        }
+        insertIntoContentEditable(target, content);
     } else {
-        // For textarea/input: insert at cursor position
-        const start = target.selectionStart || 0;
-        const end = target.selectionEnd || 0;
-        const before = target.value.substring(0, start);
-        const after = target.value.substring(end);
-
-        target.value = before + content + after;
-
-        // Set cursor position after inserted text
-        const newPosition = start + content.length;
-        target.selectionStart = newPosition;
-        target.selectionEnd = newPosition;
-
-        // Trigger input event for framework reactivity
-        target.dispatchEvent(new InputEvent('input', {
-            bubbles: true,
-            cancelable: true,
-            inputType: 'insertText',
-            data: content
-        }));
+        insertIntoInputField(target, content);
     }
 
     focusVariable(target, content, isContentEditable);
@@ -439,19 +447,18 @@ function findTextBackwards(startNode, startOffset, targetText) {
     let node = startNode;
     let offset = startOffset;
 
+    // 5000 character limit prevents infinite loops in pathological DOM structures
     const MAX_STEPS = 5000;
     let steps = 0;
 
     // Initial adjustment
-    if (node.nodeType !== 3) {
-        if (offset > 0) {
-            node = node.childNodes[offset - 1];
-            while (node.lastChild) node = node.lastChild;
-            if (node.nodeType === 3) offset = node.length;
-            else offset = 0;
-        } else {
-            // will move previous
-        }
+    // If starting on a non-text node, descend to the last text node within it.
+    // If offset is 0, the while loop's "move previous" block handles traversal.
+    if (node.nodeType !== 3 && offset > 0) {
+        node = node.childNodes[offset - 1];
+        while (node.lastChild) node = node.lastChild;
+        if (node.nodeType === 3) offset = node.length;
+        else offset = 0;
     }
 
     while (steps < MAX_STEPS) {

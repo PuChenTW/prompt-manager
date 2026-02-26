@@ -1,4 +1,6 @@
+// 5000 chars matches the practical limit for most LLM prompt templates
 const MAX_CONTENT_LENGTH = 5000;
+// 200 chars is enough for descriptive titles while keeping the UI clean
 const MAX_TITLE_LENGTH = 200;
 
 const promptList = document.getElementById('prompt-list');
@@ -28,61 +30,58 @@ charLimitDisplay.textContent = MAX_CONTENT_LENGTH.toLocaleString();
 let prompts = [];
 let editingId = null;
 
-// Load stored data
+function getStorageLocal(key) {
+    return new Promise(resolve => chrome.storage.local.get([key], r => resolve(r)));
+}
+
 async function init() {
     // 1. Get trigger config from local storage
-    chrome.storage.local.get(['triggerConfig'], async (result) => {
-        // Config default: Cmd+/ on Mac, Ctrl+/ on others
-        const defaultDisplay = 'Ctrl+/';
-        const defaultKey = '/';
-        const defaultCode = 'Slash';
-        const defaultMods = { ctrlKey: true, metaKey: false, altKey: false, shiftKey: false };
-
-        const config = result.triggerConfig || {
-            key: defaultKey,
-            code: defaultCode,
-            display: defaultDisplay,
-            ctrlKey: true,
-            metaKey: false,
-            altKey: false,
-            shiftKey: false
-        };
-        triggerKeyInput.value = config.display;
-        triggerKeyInput.dataset.config = JSON.stringify(config);
-    });
+    const result = await getStorageLocal('triggerConfig');
+    const config = result.triggerConfig || {
+        key: '/',
+        code: 'Slash',
+        display: 'Ctrl+/',
+        ctrlKey: true,
+        metaKey: false,
+        altKey: false,
+        shiftKey: false
+    };
+    triggerKeyInput.value = config.display;
+    triggerKeyInput.dataset.config = JSON.stringify(config);
 
     // 2. Get prompts from IndexedDB
     try {
         prompts = await db.getAllPrompts();
         renderPrompts();
     } catch (e) {
-        console.error("Failed to load prompts from DB", e);
+        console.error('Prompt Manager: Failed to load prompts from DB', e);
+        promptList.innerHTML = '<div class="empty-state"><h3>Failed to load prompts</h3><p>Storage may be unavailable in this context.</p></div>';
     }
 }
 
 init();
 
 // Settings Modal Logic
-settingsBtn.onclick = () => {
+settingsBtn.addEventListener('click', () => {
     settingsModal.classList.remove('hidden');
-};
+});
 
-closeSettingsBtn.onclick = () => {
+closeSettingsBtn.addEventListener('click', () => {
     settingsModal.classList.add('hidden');
-};
+});
 
-settingsModal.querySelector('.modal-overlay').onclick = () => {
+settingsModal.querySelector('.modal-overlay').addEventListener('click', () => {
     settingsModal.classList.add('hidden');
-};
+});
 
 // Key recorder
-triggerKeyInput.onclick = () => {
+triggerKeyInput.addEventListener('click', () => {
     triggerKeyInput.value = 'Press keys...';
     triggerKeyInput.classList.add('recording');
     saveSettingsBtn.disabled = true;
-};
+});
 
-triggerKeyInput.onkeydown = (e) => {
+triggerKeyInput.addEventListener('keydown', (e) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -123,9 +122,9 @@ triggerKeyInput.onkeydown = (e) => {
         saveSettingsBtn.disabled = false;
         triggerKeyInput.blur(); // Stop recording
     }
-};
+});
 
-saveSettingsBtn.onclick = () => {
+saveSettingsBtn.addEventListener('click', () => {
     let config;
     try {
         config = JSON.parse(triggerKeyInput.dataset.config);
@@ -155,7 +154,7 @@ saveSettingsBtn.onclick = () => {
             settingsModal.classList.add('hidden'); // Close after save
         }, 1000);
     });
-};
+});
 
 
 let draggedItemIndex = null;
@@ -195,99 +194,97 @@ function renderPrompts() {
     `;
 
         // Click card to edit
-        item.querySelector('.prompt-content').onclick = () => startEdit(p);
+        item.querySelector('.prompt-content').addEventListener('click', () => startEdit(p));
 
         // Delete button
-        const deleteBtn = item.querySelector('.delete');
-        deleteBtn.onclick = (e) => {
+        item.querySelector('.delete').addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent triggering card click
             deletePrompt(p.id);
-        };
-
-        // Drag events
-        item.addEventListener('dragstart', handleDragStart);
-        item.addEventListener('dragenter', handleDragEnter);
-        item.addEventListener('dragleave', handleDragLeave);
-        item.addEventListener('dragover', handleDragOver);
-        item.addEventListener('drop', handleDrop);
-        item.addEventListener('dragend', handleDragEnd);
+        });
 
         promptList.appendChild(item);
     });
 }
 
-function handleDragStart(e) {
-    draggedItemIndex = Number(this.dataset.index);
-    this.classList.add('dragging');
+// Drag event delegation — attached once on promptList, not per-item
+promptList.addEventListener('dragstart', (e) => {
+    const item = e.target.closest('.prompt-item');
+    if (!item) return;
+    draggedItemIndex = Number(item.dataset.index);
+    item.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-}
+});
 
-function handleDragOver(e) {
+promptList.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-
-    const rect = this.getBoundingClientRect();
+    const item = e.target.closest('.prompt-item');
+    if (!item) return;
+    const rect = item.getBoundingClientRect();
     const offset = e.clientY - rect.top;
-
     if (offset < rect.height / 2) {
-        this.classList.remove('drag-over-bottom');
-        this.classList.add('drag-over-top');
+        item.classList.remove('drag-over-bottom');
+        item.classList.add('drag-over-top');
     } else {
-        this.classList.remove('drag-over-top');
-        this.classList.add('drag-over-bottom');
+        item.classList.remove('drag-over-top');
+        item.classList.add('drag-over-bottom');
     }
-}
+});
 
-function handleDragEnter(e) {
+promptList.addEventListener('dragenter', (e) => {
+    const item = e.target.closest('.prompt-item');
     // Clear highlights from other items to ensure clean state
-    document.querySelectorAll('.prompt-item').forEach(el => {
-        if (el !== this) el.classList.remove('drag-over-top', 'drag-over-bottom');
+    promptList.querySelectorAll('.prompt-item').forEach(el => {
+        if (el !== item) el.classList.remove('drag-over-top', 'drag-over-bottom');
     });
-}
+});
 
-function handleDragLeave(e) {
-    // Only remove if leaving the element entirely (not entering a child)
-    if (this.contains(e.relatedTarget)) return;
-    this.classList.remove('drag-over-top', 'drag-over-bottom');
-}
+promptList.addEventListener('dragleave', (e) => {
+    const item = e.target.closest('.prompt-item');
+    if (!item) return;
+    // Only remove if leaving the item entirely (not entering a child)
+    if (item.contains(e.relatedTarget)) return;
+    item.classList.remove('drag-over-top', 'drag-over-bottom');
+});
 
-function handleDrop(e) {
+promptList.addEventListener('drop', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    const item = e.target.closest('.prompt-item');
+    if (!item) return;
 
-    const isAfter = this.classList.contains('drag-over-bottom');
-    this.classList.remove('drag-over-top', 'drag-over-bottom');
+    const isAfter = item.classList.contains('drag-over-bottom');
+    item.classList.remove('drag-over-top', 'drag-over-bottom');
 
-    const targetIndex = Number(this.dataset.index);
+    const targetIndex = Number(item.dataset.index);
     let finalIndex = isAfter ? targetIndex + 1 : targetIndex;
 
     if (draggedItemIndex === null) return;
 
-    if (draggedItemIndex < finalIndex) {
-        finalIndex--;
-    }
+    if (draggedItemIndex < finalIndex) finalIndex--;
 
     if (draggedItemIndex !== finalIndex) {
-        const item = prompts[draggedItemIndex];
+        const moved = prompts[draggedItemIndex];
         prompts.splice(draggedItemIndex, 1);
-        prompts.splice(finalIndex, 0, item);
+        prompts.splice(finalIndex, 0, moved);
 
         db.savePrompts(prompts)
             .then(() => {
                 renderPrompts();
                 chrome.runtime.sendMessage({ action: 'updateMenus' });
             })
-            .catch(e => console.error("Failed to save reordered prompts", e));
+            .catch(e => console.error('Prompt Manager: Failed to save reordered prompts', e));
     }
-}
+});
 
-function handleDragEnd(e) {
-    this.classList.remove('dragging');
-    document.querySelectorAll('.prompt-item').forEach(el => {
+promptList.addEventListener('dragend', (e) => {
+    const item = e.target.closest('.prompt-item');
+    if (item) item.classList.remove('dragging');
+    promptList.querySelectorAll('.prompt-item').forEach(el => {
         el.classList.remove('drag-over-top', 'drag-over-bottom');
     });
     draggedItemIndex = null;
-}
+});
 
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -335,14 +332,14 @@ function updateCharCount() {
     saveBtn.disabled = isContentTooLong || isTitleTooLong || isEmpty;
 }
 
-contentInput.oninput = () => {
+contentInput.addEventListener('input', () => {
     updateCharCount();
     updateHighlights();
-};
-contentInput.onscroll = syncScroll;
-titleInput.oninput = updateCharCount;
+});
+contentInput.addEventListener('scroll', syncScroll);
+titleInput.addEventListener('input', updateCharCount);
 
-addBtn.onclick = () => {
+addBtn.addEventListener('click', () => {
     editingId = null;
     titleInput.value = '';
     contentInput.value = '';
@@ -351,17 +348,17 @@ addBtn.onclick = () => {
     editorTitle.textContent = 'New Prompt';
     editor.classList.remove('hidden');
     titleInput.focus();
-};
+});
 
-cancelBtn.onclick = () => {
+cancelBtn.addEventListener('click', () => {
     editor.classList.add('hidden');
-};
+});
 
-editor.querySelector('.modal-overlay').onclick = () => {
+editor.querySelector('.modal-overlay').addEventListener('click', () => {
     editor.classList.add('hidden');
-};
+});
 
-saveBtn.onclick = () => {
+saveBtn.addEventListener('click', () => {
     const title = titleInput.value.trim();
     const content = contentInput.value.trim();
 
@@ -369,7 +366,7 @@ saveBtn.onclick = () => {
         const index = prompts.findIndex(p => p.id === editingId);
         prompts[index] = { ...prompts[index], title, content };
     } else {
-        prompts.push({ id: Date.now().toString(), title, content });
+        prompts.push({ id: crypto.randomUUID(), title, content });
     }
 
     db.savePrompts(prompts)
@@ -378,8 +375,8 @@ saveBtn.onclick = () => {
             editor.classList.add('hidden');
             chrome.runtime.sendMessage({ action: 'updateMenus' });
         })
-        .catch(e => console.error("Failed to save prompt", e));
-};
+        .catch(e => console.error('Prompt Manager: Failed to save prompt', e));
+});
 
 function startEdit(prompt) {
     editingId = prompt.id;
@@ -403,5 +400,5 @@ function deletePrompt(id) {
             renderPrompts();
             chrome.runtime.sendMessage({ action: 'updateMenus' });
         })
-        .catch(e => console.error("Failed to delete prompt", e));
+        .catch(e => console.error('Prompt Manager: Failed to delete prompt', e));
 }

@@ -13,7 +13,7 @@ chrome.runtime.onInstalled.addListener(async () => {
                 // Remove from local storage after successful migration
                 chrome.storage.local.remove(['prompts']);
             } catch (error) {
-                console.error('Migration failed:', error);
+                console.error('Prompt Manager: Migration failed:', error);
             }
         }
         createMenus(); // Ensure menus are created regardless of migration
@@ -49,7 +49,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         db.getAllPrompts().then(prompts => {
             sendResponse({ prompts });
         }).catch(err => {
-            console.error(err);
+            console.error('Prompt Manager: Failed to get prompts:', err);
             sendResponse({ prompts: [] });
         });
         return true; // Keep message channel open for async response
@@ -57,7 +57,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.action === 'updateMenus') {
         createMenus();
+        return;
     }
+
+    // Unknown action — respond immediately to avoid hanging the message channel
+    sendResponse({ error: 'unknown action' });
 });
 
 async function createMenus() {
@@ -79,7 +83,7 @@ async function createMenus() {
                 });
             });
         } catch (error) {
-            console.error("Failed to load prompts for menus:", error);
+            console.error('Prompt Manager: Failed to load prompts for menus:', error);
         }
     });
 }
@@ -93,7 +97,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
                 chrome.tabs.sendMessage(tab.id, { action: 'inject', content: prompt.content });
             }
         } catch (error) {
-            console.error("Failed to inject prompt:", error);
+            console.error('Prompt Manager: Failed to inject prompt:', error);
         }
     }
 });

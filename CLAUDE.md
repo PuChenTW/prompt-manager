@@ -44,14 +44,14 @@ The extension has three execution contexts that cannot share memory directly:
 
 **Prompt schema:**
 ```json
-{ "id": "timestamp_string", "title": "...", "content": "... {{variable}} ..." }
+{ "id": "uuid-v4-string", "title": "...", "content": "... {{variable}} ..." }
 ```
 
 ## Key Implementation Details
 
-**Text injection** (`content.js:injectIntoActiveElement`): Two paths based on target type:
-- `textarea`/`input`: direct `.value` manipulation with `selectionStart`/`selectionEnd`
-- `contenteditable`: Selection API + `insertNode()`, then fires `InputEvent` for React/Vue compatibility
+**Text injection** (`content.js:injectIntoActiveElement`): Resolves the target element via `resolveTarget()`, then dispatches to one of two insertion functions:
+- `insertIntoInputField()` for `textarea`/`input`: direct `.value` manipulation with `selectionStart`/`selectionEnd`
+- `insertIntoContentEditable()` for `contenteditable`: Selection API + `insertNode()`, then fires `InputEvent` for React/Vue compatibility
 
 **Variable auto-selection** (`content.js:focusVariable`): After injection, searches backwards through the DOM text nodes for the first `{{...}}` match using a reversed-string scan (`findTextBackwards`), then walks forward (`walkForward`) to calculate the end position for selection range.
 
