@@ -17,6 +17,10 @@ There is no build step. To test changes:
 
 Reload is required after every change to `background.js`, `db.js`, `manifest.json`, or `options.js`/`options.html`. Changes to `content.js` and `panel.css` require reloading the target page.
 
+## Commit Style
+
+One-line commit messages using the conventional commits format: `type: short description`. Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`.
+
 ## Releasing
 
 Releases are triggered by pushing a git tag matching `v*`. The CI workflow (`.github/workflows/cd.yml`) zips the extension files and creates a GitHub Release. To release:
