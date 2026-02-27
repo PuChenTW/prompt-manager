@@ -2,190 +2,85 @@
 trigger: always_on
 ---
 
-# Prompt Manager - Chrome Extension
+## What This Is
 
-一個輕量化的 Chrome 擴充功能，用於管理和快速插入 Prompt 模板。
+A Chrome extension (Manifest V3) for managing and inserting AI prompt templates. Pure vanilla JavaScript — no build tools, no bundlers, no TypeScript. Files are loaded directly by Chrome.
 
-## 功能需求 (User Requirements Document)
+## Loading the Extension for Testing
 
-### 1. 核心功能
+There is no build step. To test changes:
 
-#### 1.1 Prompt 管理
-- **新增 Prompt**：使用者可以建立新的 Prompt 模板，包含：
-  - 標題（Title）：用於識別該 Prompt
-  - 內容（Content）：Prompt 的完整文字內容
-  - 支援變數標記：使用 `{{variable}}` 格式標記需要替換的變數位置
+1. Open `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked" and select this directory
+4. After code changes, click the reload button on the extension card
 
-- **編輯 Prompt**：點擊 Prompt 卡片即可開啟編輯視窗
-- **刪除 Prompt**：每個卡片右側有 Delete 按鈕
-- **清單瀏覽**：在設定頁面顯示所有已儲存的 Prompt 清單，長內容自動以省略號顯示
+Reload is required after every change to `background.js`, `db.js`, `manifest.json`, or `options.js`/`options.html`. Changes to `content.js` and `panel.css` require reloading the target page.
 
-#### 1.2 Prompt 插入
-- **右鍵選單插入**：
-  - 在任何可編輯區域（輸入框、Textarea、contenteditable 元素）按右鍵
-  - 選單中顯示「Prompt Manager」及其子選單
-  - 點擊特定 Prompt 即可插入到目標輸入框
+## Commit Style
 
-- **鍵盤快捷鍵（Command Palette）**：
-  - 支援自定義組合鍵（預設為 `Ctrl + /`）
-  - 按下組合鍵後顯示 Prompt 搜尋面板
-  - 支援模糊搜尋與鍵盤導航選取
+One-line commit messages using the conventional commits format: `type: short description`. Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`.
 
-- **變數自動定位**：
-  - 插入 Prompt 後，自動偵測第一個 `{{variable}}` 的位置
-  - 將游標移動至該變數並自動選取，方便使用者直接輸入替換
+## Releasing
 
-#### 1.3 資料儲存
-- 使用 **IndexedDB** 儲存 Prompt 資料，突破了原先 `chrome.storage.local` 預設 5MB 的容量限制，可大量儲存長篇 Prompt 模板。
-- 快捷鍵設定 (Trigger Key) 因資料佔用極小，仍保留於 `chrome.storage.local` 中。
-- Prompt 資料格式 (IndexedDB `prompts` Object Store)：
-  ```json
-  {
-    "id": "timestamp_string",
-    "title": "Prompt 標題",
-    "content": "Prompt 內容，支援 {{variable}} 變數"
-  }
-  ```
-
-### 2. 使用者介面
-
-#### 2.1 設定頁面 (Options Page)
-- **現代化設計**：
-  - 漸層背景（淡藍灰漸層）
-  - 紫藍漸層主色調
-  - Inter 字體提升可讀性
-  - 卡片式佈局搭配多層陰影系統
-
-- **設定區域**：
-  - **齒輪按鈕**：點擊右上角齒輪圖示開啟設定彈窗
-  - **Trigger Key**：在彈窗中自訂叫出面板的快捷鍵
-  - 僅支援組合鍵（如 `Cmd+K`, `Ctrl+/`），不支援單一字元觸發
-  - 驗證機制：若偵測到非組合鍵將阻擋儲存並顯示錯誤提示
-  - **錄製機制**：點擊輸入框後直接按鍵即可自動錄製新快捷鍵
-
-- **Prompt 清單**：
-  - 點擊擴充功能圖示開啟設定頁面（在新分頁中）
-  - 顯示所有已儲存的 Prompt 清單
-  - 提供「+ Add Prompt」按鈕新增 Prompt
-  - 每個 Prompt 卡片：
-    - 標題與內容預覽（最多 3 行，超過顯示 `...`）
-    - 點擊卡片任意處即可編輯
-    - Delete 按鈕：刪除該 Prompt
-    - Hover 效果：卡片右移 + 背景變色
-
-#### 2.2 編輯對話框 (Modal)
-- **大尺寸設計**：寬度 80%，最大 1200px，方便閱讀長 Prompt
-- **玻璃擬態效果**：背景模糊 + 半透明遮罩
-- **動畫效果**：滑入 + 淡入動畫
-- **表單元素**：
-  - 標題輸入框
-  - 內容輸入框（多行，280px 高度）
-  - Focus 狀態：藍色邊框 + 光暈效果
-  - Cancel 與 Save 按鈕
-
-#### 2.3 右鍵選單 (Context Menu)
-- 僅在可編輯區域時顯示
-- 父選單：「Prompt Manager」
-- 子選單：動態顯示所有已儲存的 Prompt 標題
-
-### 3. 自動化測試
-
-使用 Playwright E2E 測試，涵蓋三個執行環境的整合流程。
+Releases are triggered by pushing a git tag matching `v*`. The CI workflow (`.github/workflows/cd.yml`) zips the extension files and creates a GitHub Release. To release:
 
 ```bash
-npm test                    # 執行所有測試
-npx playwright show-report  # 查看 HTML 報告
+git tag v1.x.x
+git push origin v1.x.x
 ```
 
-**首次設定：** `npm install && npx playwright install chromium`
+## Architecture
 
-測試檔案位於 `tests/`：
-- `tests/options.test.js` — Options 頁面 CRUD 流程
-- `tests/content.test.js` — 熱鍵面板、注入、變數選取、Context Menu 路徑
+The extension has three execution contexts that cannot share memory directly:
 
-### 4. 技術特性
+| Context | Files | Runs in |
+|---|---|---|
+| Service Worker | `background.js`, `db.js` | Extension background |
+| Content Script | `content.js`, `panel.css` | Every web page |
+| Options Page | `options.js`, `options.html`, `options.css`, `db.js` | Extension tab |
 
-#### 4.1 相容性
-- **網站支援**：所有網站（`<all_urls>`）
-- **輸入框支援**：
-  - `<textarea>` 元素
-  - `<input>` 元素
-  - `contenteditable` 元素（如 ChatGPT、Claude 等）
+**Critical constraint:** Content scripts cannot access the extension's IndexedDB directly due to origin isolation. They must request data via `chrome.runtime.sendMessage({ action: 'getPrompts' })` which the background service worker handles. `content.js` caches the response for 5 seconds to avoid latency on hotkey press.
 
-#### 4.2 注入機制
-- 使用現代的 `Selection API` 搭配 `insertNode` 等方法，取代已棄用的 `document.execCommand('insertText')`，提升穩定性。
-- 觸發 `input` 事件以確保 React/Next.js 等框架正確更新狀態
-- 追蹤右鍵點擊位置，即使焦點切換也能正確插入
+**Data storage split:**
+- Prompts → IndexedDB (`PromptManagerDB`, `prompts` store) — bypasses the 5MB `chrome.storage.local` limit
+- Hotkey config (`triggerConfig`) → `chrome.storage.local` — small, needs synchronous-style access
 
-#### 4.3 效能與安全
-- 輕量化設計，最小化資源佔用
-- 使用 Manifest V3 標準
-
-#### 4.4 架構通訊 (Messaging)
-- Content Script 受到 Origin 隔離限制無法直接存取擴充功能的 IndexedDB，故透過 `chrome.runtime.sendMessage` 向 Background Script 非同步請求 Prompt 清單。
-- 實作 5 秒的資料快取 (Cache) 機制，確保按下快捷鍵時面板能「零延遲」開啟，不被通訊延遲影響。
-
-### 5. 使用流程
-
-#### 5.1 初次設定
-1. 安裝擴充功能
-2. 點擊擴充功能圖示開啟設定頁面
-3. 點擊「Add Prompt」建立第一個 Prompt 模板
-4. 輸入標題與內容（可使用 `{{variable}}` 標記變數）
-5. 點擊 Save 儲存
-
-#### 5.2 日常使用
-**方法 A：右鍵選單**
-1. 在任何網站的輸入框上按右鍵
-2. 選擇「Prompt Manager」→ 選擇想使用的 Prompt
-3. Prompt 自動插入，游標移至第一個變數位置
-4. 輸入變數內容，完成 Prompt 使用
-
-**方法 B：鍵盤快捷鍵**
-1. 在輸入框中按下組合鍵（預設 `Ctrl + /`）
-2. 出現搜尋面板，輸入關鍵字搜尋 Prompt
-3. 使用上下鍵選擇，按 Enter 插入
-4. Prompt 自動插入，游標自動定位至變數
-
-#### 5.3 管理 Prompt
-1. 點擊擴充功能圖示開啟設定頁面
-2. 在清單中找到要編輯或刪除的 Prompt
-3. 點擊 Edit 修改，或點擊 Delete 刪除
-
-### 6. 使用情境範例
-
-#### 範例 1：財經分析師 Prompt
-```
-標題：Financial Analyst
-內容：Act as a financial analyst. Analyze the following data: {{data}}
+**Prompt schema:**
+```json
+{ "id": "uuid-v4-string", "title": "...", "content": "... {{variable}} ..." }
 ```
 
-使用時：右鍵選單 → Financial Analyst → 游標自動選取 `{{data}}` → 輸入資料
+## Key Implementation Details
 
-#### 範例 2：程式碼審查 Prompt
+**Text injection** (`content.js:injectIntoActiveElement`): Resolves the target element via `resolveTarget()`, then dispatches to one of two insertion functions:
+- `insertIntoInputField()` for `textarea`/`input`: direct `.value` manipulation with `selectionStart`/`selectionEnd`
+- `insertIntoContentEditable()` for `contenteditable`: Selection API + `insertNode()`, then fires `InputEvent` for React/Vue compatibility
+
+**Variable auto-selection** (`content.js:focusVariable`): After injection, searches backwards through the DOM text nodes for the first `{{...}}` match using a reversed-string scan (`findTextBackwards`), then walks forward (`walkForward`) to calculate the end position for selection range.
+
+**Context menu**: Built dynamically by `background.js:createMenus()`. Must be rebuilt whenever prompts change — options page sends `{ action: 'updateMenus' }` after any CRUD operation.
+
+**Migration**: On `onInstalled`, `background.js` checks `chrome.storage.local` for a legacy `prompts` key and migrates it to IndexedDB, then removes it.
+
+## Testing
+
+Playwright E2E tests in `tests/`. Run with:
+
+```bash
+npm test                    # run all tests
+npx playwright show-report  # view HTML report after a run
 ```
-標題：Code Reviewer
-內容：Please review the following {{language}} code and provide feedback on:
-1. Code quality
-2. Performance
-3. Security
 
-Code:
-{{code}}
-```
+**Setup (first time):** `npm install && npx playwright install chromium`
 
-使用時：右鍵選單 → Code Reviewer → 游標自動選取第一個 `{{language}}` → 輸入語言名稱 → Tab/手動導航至 `{{code}}` → 貼上程式碼
+### Playwright extension testing gotchas
+- `context` is a reserved built-in fixture (test-scoped) — use `browserContext` for the worker-scoped persistent context
+- `chrome.tabs.query({})` returns tabs without `url` (needs `tabs` permission not in manifest) — use `{ active: true, lastFocusedWindow: true }` + `page.bringToFront()` instead
+- Content scripts in `file://` pages don't have `chrome.tabs` — get tab IDs from the service worker only
 
-### 7. 限制與注意事項
+## Constraints
 
-1. **變數定位限制**：目前僅自動定位到第一個變數，後續變數需手動導航
-2. **iframe 支援**：部分複雜的 iframe 結構可能需要額外處理
-3. **資料轉移**：若未來改變儲存結構，需要注意 IndexedDB 的資料庫版本升級與舊資料相容處理。
-
-### 8. 未來可能擴充功能
-
-- 支援 Prompt 分類/標籤
-- 支援匯入/匯出 Prompt 集合
-- 支援 Prompt 範本變數預設值
-- 鍵盤快捷鍵支援
-- 多變數智慧導航
+- No frameworks, no TypeScript — plain ES2020+ JavaScript. `package.json` exists for devDependencies (Playwright) only; no runtime dependencies.
+- Manifest V3: no `document.execCommand`, service worker instead of background page
+- `db.js` uses a CommonJS-style export guard (`if (typeof module !== 'undefined')`) so it works both as an `importScripts()` target in the service worker and as a `<script>` tag in the options page
