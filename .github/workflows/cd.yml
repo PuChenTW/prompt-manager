@@ -20,8 +20,12 @@ jobs:
         run: |
           zip -r prompt-manager.zip manifest.json background.js db.js content.js panel.css options.html options.css options.js icons/
 
+      - name: Extract tag message
+        run: git tag -l --format='%(contents)' ${{ github.ref_name }} > TAG_MESSAGE.txt
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2.5.0
         if: github.ref_type == 'tag'
         with:
           files: prompt-manager.zip
+          body_path: TAG_MESSAGE.txt
