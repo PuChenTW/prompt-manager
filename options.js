@@ -1,5 +1,5 @@
-// 5000 chars matches the practical limit for most LLM prompt templates
-const MAX_CONTENT_LENGTH = 5000;
+// 100000 chars covers any realistic prompt; IndexedDB has no practical per-record size limit
+const MAX_CONTENT_LENGTH = 100000;
 // 200 chars is enough for descriptive titles while keeping the UI clean
 const MAX_TITLE_LENGTH = 200;
 

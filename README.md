@@ -9,7 +9,7 @@ A lightweight Chrome extension for managing and quickly inserting AI prompt temp
 **Create & Store Prompts**
 - Build reusable prompt templates with titles and content
 - Support for variable placeholders using `{{variable}}` syntax
-- Character limits: 200 chars for titles, 5000 chars for content
+- Character limits: 200 chars for titles, 100,000 chars for content
 - Persistent storage using IndexedDB for massively large templates
 
 **Edit & Delete**
