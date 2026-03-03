@@ -23,12 +23,24 @@ One-line commit messages using the conventional commits format: `type: short des
 
 ## Releasing
 
-Releases are triggered by pushing a git tag matching `v*`. The CI workflow (`.github/workflows/cd.yml`) zips the extension files and creates a GitHub Release. To release:
+Releases are triggered by pushing a git tag matching `v*`. The CI workflow (`.github/workflows/cd.yml`) zips the extension files and creates a GitHub Release.
 
-```bash
-git tag v1.x.x
-git push origin v1.x.x
-```
+To release:
+
+1. Update `"version"` in `manifest.json` to match the new version
+2. Commit: `git commit -m "chore: bump version to v1.x.x"`
+3. Create an annotated tag with release notes as the message:
+   ```bash
+   git tag -a v1.x.x -m "## What's Changed
+
+   - Your release notes here"
+   ```
+4. Push both:
+   ```bash
+   git push origin main && git push origin v1.x.x
+   ```
+
+The CI reads the tag annotation message and uses it as the GitHub Release body.
 
 ## Architecture
 
