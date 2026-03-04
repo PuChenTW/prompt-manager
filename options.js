@@ -20,6 +20,9 @@ const charLimitDisplay = document.getElementById('char-limit-display');
 const charCount = document.getElementById('char-count');
 const backdrop = document.getElementById('backdrop');
 const highlights = document.getElementById('highlights');
+const onboardingModal = document.getElementById('onboarding-modal');
+const closeOnboardingBtn = document.getElementById('close-onboarding-btn');
+const onboardingTriggerKey = document.getElementById('onboarding-trigger-key');
 
 // Set limits dynamically
 titleInput.maxLength = MAX_TITLE_LENGTH;
@@ -57,9 +60,26 @@ async function init() {
         console.error('Prompt Manager: Failed to load prompts from DB', e);
         promptList.innerHTML = '<div class="empty-state"><h3>Failed to load prompts</h3><p>Storage may be unavailable in this context.</p></div>';
     }
+
+    // 3. Show onboarding tutorial if first time
+    const tutorialResult = await getStorageLocal('startupTutorialShown');
+    if (!tutorialResult.startupTutorialShown) {
+        onboardingTriggerKey.textContent = config.display;
+        onboardingModal.classList.remove('hidden');
+        chrome.storage.local.set({ startupTutorialShown: true });
+    }
 }
 
 init();
+
+// Onboarding Modal Logic
+closeOnboardingBtn.addEventListener('click', () => {
+    onboardingModal.classList.add('hidden');
+});
+
+onboardingModal.querySelector('.modal-overlay').addEventListener('click', () => {
+    onboardingModal.classList.add('hidden');
+});
 
 // Settings Modal Logic
 settingsBtn.addEventListener('click', () => {

@@ -394,6 +394,34 @@ h2,
     margin-top: 8px;
 }
 
+/* Onboarding Modal Specifics */
+.modal-onboarding {
+    width: 500px;
+    height: auto;
+    max-width: 90%;
+    text-align: center;
+}
+
+.onboarding-title {
+    margin-bottom: 8px;
+}
+
+.onboarding-content {
+    margin: 16px 0;
+    line-height: 1.6;
+    color: var(--color-text-secondary);
+    text-align: left;
+}
+
+.onboarding-actions {
+    justify-content: center;
+    margin-top: 24px;
+}
+
+.btn-block {
+    width: 100%;
+}
+
 /* Empty State Component */
 .empty-state {
     padding: 100px 20px;

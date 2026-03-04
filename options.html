@@ -70,6 +70,22 @@
         </div>
       </div>
     </div>
+
+    <!-- Onboarding Modal -->
+    <div id="onboarding-modal" class="modal hidden">
+      <div class="modal-overlay"></div>
+      <div class="modal-content modal-onboarding">
+        <h2 class="text-h2 onboarding-title">Welcome to Prompt Manager! 🎉</h2>
+        <div class="onboarding-content">
+          <p>Press <strong id="onboarding-trigger-key">Ctrl + /</strong> (default) in any input field to quickly open the menu and insert your prompts!</p>
+          <br>
+          <p>✨ <strong>Variables Support</strong>: Add <code>{{variable_name}}</code> in your prompt content, and it will be automatically selected after insertion for quick replacement!</p>
+        </div>
+        <div class="modal-actions onboarding-actions">
+          <button id="close-onboarding-btn" class="btn btn-primary btn-block">Get Started</button>
+        </div>
+      </div>
+    </div>
   </div>
   <script src="db.js"></script>
   <script src="options.js"></script>
