@@ -347,8 +347,16 @@ function insertIntoContentEditable(target, content) {
 function insertIntoInputField(target, content) {
     const start = target.selectionStart || 0;
     const end = target.selectionEnd || 0;
+    const newValue = target.value.substring(0, start) + content + target.value.substring(end);
 
-    target.value = target.value.substring(0, start) + content + target.value.substring(end);
+    // Use the native value setter so React's synthetic event system picks up the change
+    const proto = target.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+    const nativeSetter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+    if (nativeSetter) {
+        nativeSetter.call(target, newValue);
+    } else {
+        target.value = newValue;
+    }
 
     const newPosition = start + content.length;
     target.selectionStart = newPosition;
@@ -388,11 +396,44 @@ function isInput(el) {
 }
 
 function findAIInputField() {
-    // Common selectors for ChatGPT, Claude, Gemini
+    const host = location.hostname;
+
+    // Perplexity: textarea-based input; prioritise over contenteditable to avoid
+    // matching answer/response areas that are also editable divs on the page
+    if (host.endsWith('perplexity.ai')) {
+        return document.querySelector('textarea') ||
+            document.querySelector('[role="textbox"]');
+    }
+
+    // Grok (grok.x.com)
+    if (host === 'grok.x.com') {
+        return document.querySelector('textarea') ||
+            document.querySelector('div[contenteditable="true"]');
+    }
+
+    // DeepSeek
+    if (host === 'chat.deepseek.com') {
+        return document.querySelector('div[contenteditable="true"]') ||
+            document.querySelector('textarea');
+    }
+
+    // Mistral Le Chat
+    if (host === 'chat.mistral.ai') {
+        return document.querySelector('textarea') ||
+            document.querySelector('div[contenteditable="true"]');
+    }
+
+    // Microsoft Copilot
+    if (host === 'copilot.microsoft.com') {
+        return document.querySelector('textarea') ||
+            document.querySelector('div[contenteditable="true"]');
+    }
+
+    // Generic fallback: ChatGPT, Claude, Gemini, and everything else
     return document.querySelector('#prompt-textarea') || // ChatGPT
-        document.querySelector('div[contenteditable="true"]') || // ChatGPT/Claude
-        document.querySelector('textarea') || // Gemini/Claude fallback
-        document.querySelector('[role="textbox"]'); // Generic
+        document.querySelector('div[contenteditable="true"]') || // Claude / ChatGPT
+        document.querySelector('textarea') || // Gemini / others
+        document.querySelector('[role="textbox"]'); // Generic ARIA fallback
 }
 
 function focusVariable(target, content, isContentEditable) {
